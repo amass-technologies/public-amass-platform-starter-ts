@@ -2,7 +2,7 @@
   "name": "@amass/public-amass-platform-starter-ts",
   "module": "index.ts",
   "type": "module",
-  "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "start": "bun run index.ts",
     "lint": "biome check .",
