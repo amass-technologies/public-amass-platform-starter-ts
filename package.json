@@ -1,13 +1,27 @@
 {
-  "name": "public-amass-platform-starter-ts",
+  "name": "@amass/public-amass-platform-starter-ts",
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "start": "bun run index.ts",
+    "test": "bun test",
+    "lint": "biome check .",
+    "format": "biome format . --write"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.4.14",
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.74",
+    "@ai-sdk/google": "^3.0.67",
+    "@ai-sdk/openai": "^3.0.60",
+    "@ai-sdk/openai-compatible": "^2.0.46",
+    "ai": "^6.0.175",
+    "zod": "^4.4.3"
   }
 }

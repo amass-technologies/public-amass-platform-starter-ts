@@ -18,19 +18,12 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "suspicious": {
-        "noUnknownAtRules": "off"
-      },
       "nursery": {
         "noFloatingPromises": "error"
       },
       "style": {
         "useBlockStatements": "error"
       }
-    },
-    "domains": {
-      "next": "recommended",
-      "react": "recommended"
     }
   },
   "assist": {
