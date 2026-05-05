@@ -5,7 +5,8 @@ import { runRepl } from "./src/repl"
 say("Amass", {
   font: "block",
   align: "left",
-  colors: ["cyan", "blue"],
+  gradient: ["#d97a5e", "#7a3826"],
+  transitionGradient: true,
   space: false,
 })
 console.log("\x1b[1mResearch Assistant\x1b[0m\n")
@@ -14,5 +15,8 @@ console.log("Ask about a topic, drug, disease, gene, paper, or specific clinical
 console.log("I'll search the Amass BiomedCore (PubMed) and TrialCore (ClinicalTrials.gov)")
 console.log("for relevant records.\n")
 
-const modelSpec = process.env.MODEL ?? "anthropic:claude-opus-4-7"
+const modelSpec = process.env.MODEL
+if (!modelSpec) {
+  throw new Error('MODEL must be set (e.g. "anthropic:claude-opus-4-7"). See .env.example.')
+}
 await runRepl({ model: getModel(modelSpec) })

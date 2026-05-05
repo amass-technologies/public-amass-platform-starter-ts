@@ -25,8 +25,8 @@ export interface RunTurnOpts {
   model: LanguageModel
   messages: ModelMessage[]
   onTextDelta: (text: string) => void
-  onToolCall: (name: string, args: unknown) => void
-  onToolResult: (name: string, result: unknown) => void
+  onToolCall: (id: string, name: string, args: unknown) => void
+  onToolResult: (id: string, name: string, result: unknown) => void
 }
 
 export async function runTurn(opts: RunTurnOpts): Promise<ModelMessage[]> {
@@ -42,9 +42,9 @@ export async function runTurn(opts: RunTurnOpts): Promise<ModelMessage[]> {
     if (part.type === "text-delta") {
       opts.onTextDelta(part.text)
     } else if (part.type === "tool-call") {
-      opts.onToolCall(part.toolName, part.input)
+      opts.onToolCall(part.toolCallId, part.toolName, part.input)
     } else if (part.type === "tool-result") {
-      opts.onToolResult(part.toolName, part.output)
+      opts.onToolResult(part.toolCallId, part.toolName, part.output)
     }
   }
   return (await result.response).messages
