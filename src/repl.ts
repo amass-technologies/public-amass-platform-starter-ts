@@ -2,12 +2,54 @@ import { stdin, stdout } from "node:process"
 import * as readline from "node:readline/promises"
 import type { LanguageModel, ModelMessage } from "ai"
 import { runTurn } from "./agent"
+import { toolFormatters } from "./tools"
 
 const DIM = "\x1b[2m"
 const RESET = "\x1b[0m"
+const CONTINUATION_INDENT = "    "
 
-function formatResult(r: unknown): string {
-  return typeof r === "string" ? r : JSON.stringify(r)
+const MAX_STR_LEN = 120
+const MAX_ARRAY_ITEMS = 3
+const MAX_DEPTH = 8
+
+function shrink(value: unknown, depth = 0): unknown {
+  if (depth > MAX_DEPTH) {
+    return "…"
+  }
+  if (typeof value === "string") {
+    return value.length > MAX_STR_LEN ? `${value.slice(0, MAX_STR_LEN)}…` : value
+  }
+  if (Array.isArray(value)) {
+    const head: unknown[] = value.slice(0, MAX_ARRAY_ITEMS).map((v) => shrink(v, depth + 1))
+    if (value.length > MAX_ARRAY_ITEMS) {
+      head.push(`… +${value.length - MAX_ARRAY_ITEMS} more`)
+    }
+    return head
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = shrink(v, depth + 1)
+    }
+    return out
+  }
+  return value
+}
+
+function truncatedJSON(value: unknown): string {
+  return JSON.stringify(shrink(value), null, 2)
+}
+
+function formatToolResult(name: string, result: unknown): string {
+  if (typeof result === "string") {
+    return result
+  }
+  const formatter = toolFormatters[name]
+  return formatter ? formatter(result) : truncatedJSON(result)
+}
+
+function indentContinuation(s: string, indent: string): string {
+  return s.split("\n").join(`\n${indent}`)
 }
 
 export async function runRepl(opts: { model: LanguageModel }): Promise<void> {
@@ -26,9 +68,7 @@ export async function runRepl(opts: { model: LanguageModel }): Promise<void> {
     }
     armed = true
     rl.write(null, { ctrl: true, name: "u" })
-    stdout.write(
-      `\r\n${DIM}(Press Ctrl+C again to exit, or any other key to cancel)${RESET}\x1b[1A\x1b[3G`,
-    )
+    stdout.write(`\r\n${DIM}(Press Ctrl+C again to exit, or any other key to cancel)${RESET}\x1b[1A\x1b[3G`)
   })
   stdin.prependListener("keypress", (_str, key: { ctrl?: boolean; name?: string } | undefined) => {
     if (!armed) {
@@ -61,8 +101,9 @@ export async function runRepl(opts: { model: LanguageModel }): Promise<void> {
         onToolCall: (n, a) => {
           stdout.write(`\n${DIM}→ ${n}(${JSON.stringify(a)})${RESET}\n`)
         },
-        onToolResult: (_n, r) => {
-          stdout.write(`${DIM}  ↳ ${formatResult(r)}${RESET}\n`)
+        onToolResult: (n, r) => {
+          const formatted = indentContinuation(formatToolResult(n, r), CONTINUATION_INDENT)
+          stdout.write(`${DIM}  ↳ ${formatted}${RESET}\n`)
         },
       })
       stdout.write("\n")
