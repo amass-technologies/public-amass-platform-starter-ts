@@ -5,9 +5,9 @@
   "private": true,
   "scripts": {
     "start": "bun run index.ts",
-    "test": "bun test",
     "lint": "biome check .",
-    "format": "biome format . --write"
+    "format": "biome format . --write",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.14",

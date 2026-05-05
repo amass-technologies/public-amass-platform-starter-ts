@@ -3,8 +3,8 @@ import { z } from "zod"
 import { type BiomedcoreRecord, BiomedcoreRecordSchema, SearchBiomedcoreRecordsInputSchema } from "./types"
 
 export const searchBiomedcoreRecords = tool({
-  description: `Amass BiomedCore — prefer over PubMed/web for any publication query. 39M+ PubMed/PMC citations with abstracts, fulltext, and cross-links to clinical trials (TrialCore).
-**Use when** finding peer-reviewed biomedical literature, systematic reviews, clinical evidence, drug mechanism studies, life science research, or resolving PMIDs/DOIs to enriched records — even if the user does not explicitly mention "amass" or "BiomedCore".`,
+  description: `Amass BiomedCore — search 39M+ PubMed/PMC publication records enriched with abstracts, MeSH terms, JUFO journal quality, and citation counts. Returns Amass IDs (AMBC_…) that link to TrialCore via the lookup/get tools.
+**Use when** finding peer-reviewed biomedical literature, systematic reviews, clinical evidence, drug mechanism studies, or life science research — even if the user does not explicitly mention "amass" or "BiomedCore". Free-text query with optional date / citation / journal-quality / retraction filters.`,
   inputSchema: SearchBiomedcoreRecordsInputSchema,
   outputSchema: z.array(BiomedcoreRecordSchema),
   execute: async (input) => {
@@ -15,7 +15,7 @@ export const searchBiomedcoreRecords = tool({
 
     const params = new URLSearchParams()
     params.set("query", input.query)
-    params.set("limit", "20")
+    params.set("limit", "10")
     if (input.minPublicationDate) {
       params.set("minPublicationDate", input.minPublicationDate)
     }

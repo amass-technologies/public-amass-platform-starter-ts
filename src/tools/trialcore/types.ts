@@ -59,7 +59,6 @@ export const TrialcoreRecordSchema = z.object({
   startDate: z.string().nullable().describe("Study start (YYYY-MM-DD)."),
   completionDate: z.string().nullable().describe("Study completion (YYYY-MM-DD)."),
   lastUpdateDate: z.string().nullable().describe("Last ClinicalTrials.gov record update (YYYY-MM-DD)."),
-  hasResults: z.boolean().describe("Whether results are posted on ClinicalTrials.gov."),
   enrollment: z.number().nullable().describe("Participant count (actual or target)."),
   enrollmentType: enrollmentTypeEnum.nullable(),
   sponsorName: z.string().nullable(),
@@ -115,4 +114,29 @@ export const SearchTrialcoreRecordsInputSchema = z.object({
   minCompletionDate: z.string().regex(datePattern).optional().describe("Earliest completion (YYYY-MM-DD)."),
   maxCompletionDate: z.string().regex(datePattern).optional().describe("Latest completion (YYYY-MM-DD)."),
   minEnrollment: z.number().int().min(0).optional().describe("Minimum participant count."),
+})
+
+const LookupTrialcoreItemSchema = z.object({
+  nctId: z.string().describe("ClinicalTrials.gov identifier (e.g. NCT01234567)."),
+})
+
+export const LookupTrialcoreAmassIdInputSchema = z.object({
+  items: z.array(LookupTrialcoreItemSchema).min(1).describe("Items to resolve. Each item must specify an nctId."),
+})
+
+export const LookupTrialcoreAmassIdResultSchema = z.object({
+  input: LookupTrialcoreItemSchema,
+  amassIds: z.array(z.string()).describe("Matching Amass record IDs (e.g. AMTC_…)."),
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+    })
+    .optional(),
+})
+
+export type LookupTrialcoreAmassIdResult = z.infer<typeof LookupTrialcoreAmassIdResultSchema>
+
+export const GetTrialcoreRecordByIdInputSchema = z.object({
+  amassId: z.string().min(1).describe("Amass record identifier (e.g. AMTC_…)."),
 })

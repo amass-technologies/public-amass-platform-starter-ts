@@ -17,8 +17,8 @@ It is intentionally minimal — not a framework. Most additions land as new tool
 ## Commands
 
 - `bun start` (or `bun run index.ts`) — launch the REPL. Reads `MODEL` from `.env`; defaults to `anthropic:claude-opus-4-7`.
-- `bun test` — run all tests. Single test: `bun test test/model.test.ts` (optionally `-t "name pattern"`).
 - `bun run lint` — Biome check (lint + format). `bun run format` to write fixes.
+- `bun run typecheck` — `tsc --noEmit`.
 
 REPL: type `/exit`, press Ctrl+D, or hit Ctrl+C twice to quit. A single Ctrl+C clears the current line.
 
@@ -50,21 +50,8 @@ Each tool file exports a single `tool({ description, inputSchema: z.object({...}
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
 - Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
 - Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
 - Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
 - Use `bunx <package> <command>` instead of `npx <package> <command>`
 - Bun automatically loads .env, so don't use dotenv.
-
-### Testing
-
-Use `bun test` to run tests.
-
-```ts#index.test.ts
-import { test, expect } from "bun:test"
-
-test("hello world", () => {
-  expect(1).toBe(1)
-})
-```

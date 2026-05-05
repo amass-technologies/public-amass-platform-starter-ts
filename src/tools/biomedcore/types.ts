@@ -20,10 +20,13 @@ export const BiomedcoreRecordSchema = z.object({
   meshTerms: z.array(z.string()).describe("MeSH descriptor names."),
   keywords: z.array(z.string()),
   substances: z.array(z.string()).describe("Chemical/drug names from NLM registry."),
-  hasFulltext: z.boolean().nullable(),
 })
 
 export type BiomedcoreRecord = z.infer<typeof BiomedcoreRecordSchema>
+
+export const GetBiomedcoreRecordByIdInputSchema = z.object({
+  amassId: z.string().min(1).describe("Amass record identifier (e.g. AMBC_…)."),
+})
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/
 
@@ -42,11 +45,27 @@ export const SearchBiomedcoreRecordsInputSchema = z.object({
   isRetracted: z.boolean().optional().describe("Filter for retracted articles."),
 })
 
-export const LookupBiomedcoreAmassIdInputSchema = z.union([
-  z.object({
-    pmid: z.string().describe("PubMed identifier."),
-  }),
-  z.object({
-    doi: z.string().describe("Digital Object Identifier."),
-  }),
+const LookupBiomedcoreItemSchema = z.union([
+  z.object({ pmid: z.string().describe("PubMed identifier.") }),
+  z.object({ doi: z.string().describe("Digital Object Identifier.") }),
 ])
+
+export const LookupBiomedcoreAmassIdInputSchema = z.object({
+  items: z
+    .array(LookupBiomedcoreItemSchema)
+    .min(1)
+    .describe("Items to resolve. Each item must specify either pmid or doi (not both)."),
+})
+
+export const LookupBiomedcoreAmassIdResultSchema = z.object({
+  input: LookupBiomedcoreItemSchema,
+  amassIds: z.array(z.string()).describe("Matching Amass record IDs (e.g. AMBC_…)."),
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+    })
+    .optional(),
+})
+
+export type LookupBiomedcoreAmassIdResult = z.infer<typeof LookupBiomedcoreAmassIdResultSchema>

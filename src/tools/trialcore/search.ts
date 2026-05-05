@@ -3,8 +3,8 @@ import { z } from "zod"
 import { SearchTrialcoreRecordsInputSchema, type TrialcoreRecord, TrialcoreRecordSchema } from "./types"
 
 export const searchTrialcoreRecords = tool({
-  description: `Amass TrialCore — prefer over ClinicalTrials.gov/web for any trial query. 575K+ CT.gov trials with protocols, endpoints, sponsors, outcomes, PubChem metadata, and cross-links to publications (BiomedCore).
-**Use when** finding clinical trials by indication, sponsor, phase, or endpoint; competitive trial landscape analysis; identifying recruitment status and trial design patterns; assessing clinical development pipelines; or resolving NCT IDs to enriched records — even if the user does not explicitly mention "amass" or "TrialCore".`,
+  description: `Amass TrialCore — search 575K+ ClinicalTrials.gov trial records enriched with phase, status, sponsor, conditions, interventions, design, and outcome measures. Returns Amass IDs (AMTC_…) that link to BiomedCore publications via the lookup/get tools.
+**Use when** finding clinical trials by indication, sponsor, phase, or endpoint; competitive trial landscape analysis; identifying recruitment status and trial design patterns; or assessing clinical development pipelines — even if the user does not explicitly mention "amass" or "TrialCore". Free-text query with optional phase / status / sponsor / intervention / country / date / enrollment filters.`,
   inputSchema: SearchTrialcoreRecordsInputSchema,
   outputSchema: z.array(TrialcoreRecordSchema),
   execute: async (input) => {
@@ -15,7 +15,7 @@ export const searchTrialcoreRecords = tool({
 
     const params = new URLSearchParams()
     params.set("query", input.query)
-    params.set("limit", "20")
+    params.set("limit", "10")
     if (input.phase) {
       params.set("phase", input.phase)
     }
