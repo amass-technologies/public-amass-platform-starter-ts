@@ -18,7 +18,7 @@ It is intentionally minimal — not a framework. Most additions land as new tool
 
 ## Commands
 
-- `bun start` (or `bun run index.ts`) — launch the REPL. Requires `MODEL` (e.g. `anthropic:claude-opus-4-7`) in `.env`.
+- `bun start` (or `bun run src/index.tsx`) — launch the REPL. Requires `MODEL` (e.g. `anthropic:claude-opus-4-7`) in `.env`.
 - `bun run lint` — Biome check (lint + format). `bun run format` to write fixes.
 - `bun run typecheck` — `tsc --noEmit`.
 
@@ -28,10 +28,10 @@ REPL: type `/exit`, press Ctrl+D, or hit Ctrl+C twice to quit.
 
 Four files do the work; everything else is wiring.
 
-- `index.ts` — entry. Resolves `process.env.MODEL` → `getModel(spec)` → `runRepl({ model })`.
+- `src/index.tsx` — entry. Resolves `process.env.MODEL` → `getModel(spec)` → renders `<App model={model} />` via Ink.
 - `src/model.ts` — `getModel(spec)` parses `"provider:model-id"`. **The split is on the *first* colon only**, so model ids may themselves contain colons (e.g. `litellm:bedrock/anthropic.claude-3-7-sonnet:1`). Each provider branch checks for its required env var and throws a clear error if missing. To add a provider, add a `case` here.
 - `src/agent.ts` — `runTurn` calls `streamText` with the registered `tools`, an Amass research-assistant `SYSTEM_PROMPT`, and `stopWhen: stepCountIs(10)`. It iterates `result.fullStream` and forwards `text-delta`, `tool-call`, and `tool-result` parts to caller-supplied callbacks, then returns the new `ModelMessage[]` from the response.
-- `src/repl.ts` — readline-based REPL. Owns the message history (appends user input, appends `runTurn`'s returned messages on success). On error it pops the just-added user message so retries don't double-send. Tool calls are printed in dim ANSI inline with the streamed text; tool results are rendered via any matching formatter from `toolFormatters` (see below), falling back to a depth/length-truncated JSON dump.
+- `src/app.tsx` — Ink-based UI. Owns the message history, renders conversation turns via `<AssistantTurn>`, `<UserMessage>`, `<ErrorMessage>`, and `<Prompt>` components. Handles `/exit`, Ctrl+C double-press, and Shift+Enter multi-line input.
 
 ### Tools
 

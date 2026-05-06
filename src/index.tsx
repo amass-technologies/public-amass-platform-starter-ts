@@ -1,6 +1,7 @@
 import { say } from "cfonts"
-import { getModel } from "./src/model"
-import { runRepl } from "./src/repl"
+import { render } from "ink"
+import { App } from "./app"
+import { getModel } from "./model"
 
 say("Amass", {
   font: "block",
@@ -14,9 +15,11 @@ console.log("Welcome — I help you explore the biomedical literature and clinic
 console.log("Ask about a topic, drug, disease, gene, paper, or specific clinical study, and")
 console.log("I'll search the Amass BiomedCore (PubMed) and TrialCore (ClinicalTrials.gov)")
 console.log("for relevant records.\n")
+console.log("Type /exit, press Ctrl+D, or press Ctrl+C twice to quit.\n")
 
 const modelSpec = process.env.MODEL
 if (!modelSpec) {
   throw new Error('MODEL must be set (e.g. "anthropic:claude-opus-4-7"). See .env.example.')
 }
-await runRepl({ model: getModel(modelSpec) })
+
+render(<App model={getModel(modelSpec)} />, { exitOnCtrlC: false })
