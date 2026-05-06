@@ -1,8 +1,8 @@
-import { stdin, stdout } from "node:process"
-import * as readline from "node:readline/promises"
+import { stdout } from "node:process"
 import type { LanguageModel, ModelMessage } from "ai"
-import { runTurn } from "./agent"
-import { toolFormatters } from "./tools"
+import { MAIN_SYSTEM_PROMPT, runTurn } from "./agent"
+import { createPromptReader } from "./prompt"
+import { buildTools, type ToolResultFormatter } from "./tools"
 
 const DIM = "\x1b[2m"
 const RESET = "\x1b[0m"
@@ -40,12 +40,15 @@ function truncatedJSON(value: unknown): string {
   return JSON.stringify(shrink(value), null, 2)
 }
 
-function formatToolResult(name: string, result: unknown): string {
+function formatToolResult(name: string, result: unknown, formatters: Record<string, ToolResultFormatter>): string {
+  const formatter = formatters[name]
+  if (formatter) {
+    return formatter(result)
+  }
   if (typeof result === "string") {
     return result
   }
-  const formatter = toolFormatters[name]
-  return formatter ? formatter(result) : truncatedJSON(result)
+  return truncatedJSON(result)
 }
 
 function indentContinuation(s: string, indent: string): string {
@@ -60,48 +63,32 @@ type CallEntry = {
   resolved: boolean
 }
 
-function entryBody(e: CallEntry): string {
-  return e.resolved ? indentContinuation(formatToolResult(e.name, e.result), CONTINUATION_INDENT) : "…"
+function entryBody(e: CallEntry, formatters: Record<string, ToolResultFormatter>): string {
+  return e.resolved ? indentContinuation(formatToolResult(e.name, e.result, formatters), CONTINUATION_INDENT) : "…"
 }
 
-function renderEntry(e: CallEntry): string {
-  return `${DIM}→ ${e.name}(${JSON.stringify(e.args)})${RESET}\n${DIM}  ↳ ${entryBody(e)}${RESET}\n`
+function renderEntry(e: CallEntry, formatters: Record<string, ToolResultFormatter>): string {
+  return `${DIM}→ ${e.name}(${JSON.stringify(e.args)})${RESET}\n${DIM}  ↳ ${entryBody(e, formatters)}${RESET}\n`
 }
 
-function entryLineCount(e: CallEntry): number {
-  return 1 + entryBody(e).split("\n").length
+function entryLineCount(e: CallEntry, formatters: Record<string, ToolResultFormatter>): number {
+  return 1 + entryBody(e, formatters).split("\n").length
 }
 
 export async function runRepl(opts: { model: LanguageModel }): Promise<void> {
-  const rl = readline.createInterface({ input: stdin, output: stdout, terminal: true })
   const messages: ModelMessage[] = []
+  const { tools, toolFormatters } = buildTools(opts.model)
 
   console.log("Type /exit, press Ctrl+D, or press Ctrl+C twice to quit.\n")
-  rl.on("close", () => process.exit(0))
 
-  let armed = false
-  rl.on("SIGINT", () => {
-    if (armed) {
-      stdout.write("\n")
-      rl.close()
-      return
-    }
-    armed = true
-    stdout.write(`\x1b7\n${DIM}(Press Ctrl+C again to exit, or any other key to cancel)${RESET}\x1b8`)
-  })
-  stdin.prependListener("keypress", (_str, key: { ctrl?: boolean; name?: string } | undefined) => {
-    if (!armed) {
-      return
-    }
-    if (key?.ctrl && key.name === "c") {
-      return
-    }
-    armed = false
-    stdout.write("\x1b7\n\x1b[2K\x1b8")
-  })
+  const reader = createPromptReader()
 
   while (true) {
-    const line = (await rl.question("> ")).trim()
+    const result = await reader.prompt("> ")
+    if (result.intent === "exit") {
+      break
+    }
+    const line = result.value.trim()
     if (line === "") {
       continue
     }
@@ -116,6 +103,8 @@ export async function runRepl(opts: { model: LanguageModel }): Promise<void> {
     try {
       const newMessages = await runTurn({
         model: opts.model,
+        system: MAIN_SYSTEM_PROMPT,
+        tools,
         messages,
         onTextDelta: (s) => {
           stdout.write(s)
@@ -132,8 +121,8 @@ export async function runRepl(opts: { model: LanguageModel }): Promise<void> {
           }
           const entry: CallEntry = { id, name, args, result: null, resolved: false }
           batch.push(entry)
-          stdout.write(renderEntry(entry))
-          batchLineCount += entryLineCount(entry)
+          stdout.write(renderEntry(entry, toolFormatters))
+          batchLineCount += entryLineCount(entry, toolFormatters)
         },
         onToolResult: (id, _name, result) => {
           const entry = batch.find((e) => e.id === id)
@@ -148,8 +137,8 @@ export async function runRepl(opts: { model: LanguageModel }): Promise<void> {
           }
           let newCount = 0
           for (const e of batch) {
-            stdout.write(renderEntry(e))
-            newCount += entryLineCount(e)
+            stdout.write(renderEntry(e, toolFormatters))
+            newCount += entryLineCount(e, toolFormatters)
           }
           batchLineCount = newCount
 
@@ -168,5 +157,5 @@ export async function runRepl(opts: { model: LanguageModel }): Promise<void> {
       console.error(`\nError: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
-  rl.close()
+  reader.close()
 }

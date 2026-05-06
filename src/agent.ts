@@ -1,7 +1,6 @@
-import { type LanguageModel, type ModelMessage, stepCountIs, streamText } from "ai"
-import { tools } from "./tools"
+import { type LanguageModel, type ModelMessage, stepCountIs, streamText, type ToolSet } from "ai"
 
-const SYSTEM_PROMPT = `You are Amass, a research assistant helping the user with biomedical research.
+export const MAIN_SYSTEM_PROMPT = `You are Amass, a research assistant helping the user with biomedical research.
 
 You have six Amass platform tools, grouped by core:
 
@@ -23,6 +22,8 @@ When citing findings, reference papers by title and PMID/DOI, and trials by NCT 
 
 export interface RunTurnOpts {
   model: LanguageModel
+  system: string
+  tools: ToolSet
   messages: ModelMessage[]
   onTextDelta: (text: string) => void
   onToolCall: (id: string, name: string, args: unknown) => void
@@ -32,9 +33,9 @@ export interface RunTurnOpts {
 export async function runTurn(opts: RunTurnOpts): Promise<ModelMessage[]> {
   const result = streamText({
     model: opts.model,
-    system: SYSTEM_PROMPT,
+    system: opts.system,
     messages: opts.messages,
-    tools,
+    tools: opts.tools,
     stopWhen: stepCountIs(10),
   })
 
