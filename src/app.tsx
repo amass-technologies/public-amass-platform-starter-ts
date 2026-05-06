@@ -2,10 +2,12 @@ import type { LanguageModel, ModelMessage } from "ai"
 import { Box, Static, useApp } from "ink"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { MAIN_SYSTEM_PROMPT, runTurn } from "./agent"
+import { runCommand } from "./commands"
 import { AssistantTurn, type TurnPart } from "./components/assistant-turn"
 import { ErrorMessage } from "./components/error-message"
 import { Prompt } from "./components/prompt"
 import { UserMessage } from "./components/user-message"
+import { printIntro } from "./intro"
 import { buildTools } from "./tools"
 
 type CompletedItem =
@@ -36,8 +38,22 @@ export function App({ model }: { model: LanguageModel }) {
     if (trimmed === "") {
       return
     }
-    if (trimmed === "/exit") {
-      exit()
+
+    if (trimmed.startsWith("/")) {
+      const handled = await runCommand(trimmed, {
+        exit,
+        clearHistory: () => {
+          // Clear visible area + scrollback, move cursor home, then re-print intro
+          process.stdout.write("\x1b[2J\x1b[3J\x1b[H")
+          printIntro()
+          setCompleted([])
+          messagesRef.current = []
+        },
+      })
+      if (handled) {
+        return
+      }
+      setCompleted((c) => [...c, { type: "error", message: `Unknown command: ${trimmed}` }])
       return
     }
 

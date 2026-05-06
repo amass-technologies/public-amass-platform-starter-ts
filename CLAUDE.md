@@ -22,16 +22,23 @@ It is intentionally minimal — not a framework. Most additions land as new tool
 - `bun run lint` — Biome check (lint + format). `bun run format` to write fixes.
 - `bun run typecheck` — `tsc --noEmit`.
 
-REPL: type `/exit`, press Ctrl+D, or hit Ctrl+C twice to quit.
+REPL: type `/` to see available slash commands with autocomplete (e.g. `/exit`, `/clear`). Ctrl+D on an empty prompt or Ctrl+C twice also quits.
 
 ## Architecture
 
-Four files do the work; everything else is wiring.
+Four files do the core work; everything else is supporting modules.
 
-- `src/index.tsx` — entry. Resolves `process.env.MODEL` → `getModel(spec)` → renders `<App model={model} />` via Ink.
+- `src/index.tsx` — entry. Calls `printIntro()`, resolves `process.env.MODEL` → `getModel(spec)`, then `render(<App model={model} />, { exitOnCtrlC: false })` via Ink.
 - `src/model.ts` — `getModel(spec)` parses `"provider:model-id"`. **The split is on the *first* colon only**, so model ids may themselves contain colons (e.g. `litellm:bedrock/anthropic.claude-3-7-sonnet:1`). Each provider branch checks for its required env var and throws a clear error if missing. To add a provider, add a `case` here.
 - `src/agent.ts` — `runTurn` calls `streamText` with the registered `tools`, an Amass research-assistant `SYSTEM_PROMPT`, and `stopWhen: stepCountIs(10)`. It iterates `result.fullStream` and forwards `text-delta`, `tool-call`, and `tool-result` parts to caller-supplied callbacks, then returns the new `ModelMessage[]` from the response.
-- `src/app.tsx` — Ink-based UI. Owns the message history, renders conversation turns via `<AssistantTurn>`, `<UserMessage>`, `<ErrorMessage>`, and `<Prompt>` components. Handles `/exit`, Ctrl+C double-press, and Shift+Enter multi-line input.
+- `src/app.tsx` — Ink-based UI root. Owns the message history (split between `<Static>`-rendered completed turns and a live `activeTurn` for the in-progress streaming turn). Dispatches slash commands via `runCommand` from `src/commands/`, opts into the Kitty keyboard protocol on mount so terminals like Warp send disambiguated Shift+Enter, and re-prints the intro on `/clear`.
+
+Supporting modules:
+
+- `src/intro.ts` — `printIntro()` prints the cfonts banner + welcome blurb + REPL hint. Called once at startup and again by `/clear`.
+- `src/components/` — Ink components: `<Prompt>` (multi-line input + slash-command autocomplete dropdown), `<AssistantTurn>`, `<ToolCall>`, `<UserMessage>`, `<ErrorMessage>`, `<CommandSuggestions>`.
+- `src/tool-formatting.ts` — pure helpers (`formatToolResult`, `truncatedJSON`, `indentContinuation`, `CONTINUATION_INDENT`) that turn arbitrary tool result data into display strings. Used by `<ToolCall>`.
+- `src/commands/` — slash command registry. See [ADDING-COMMANDS.md](./ADDING-COMMANDS.md).
 
 ### Tools
 
@@ -52,6 +59,12 @@ export const tools = {
 ```
 
 Each tool file exports a single `tool({ description, inputSchema: z.object({...}), execute })`. To add a tool: create the file under the appropriate subdirectory, register it in `src/tools/index.ts`, and (optionally) add a formatter to `toolFormatters` alongside it.
+
+### Slash commands
+
+Slash commands (`/exit`, `/clear`) live in `src/commands/`, one module per command plus a shared registry at `src/commands/index.ts`. The autocomplete dropdown shown in the prompt and the `runCommand` dispatcher in `src/app.tsx` both read from the same registry. Adding a command means dropping a new file in `src/commands/` and adding it to the array in `src/commands/index.ts`.
+
+For step-by-step instructions including examples and the `CommandContext` extension pattern, see [ADDING-COMMANDS.md](./ADDING-COMMANDS.md).
 
 ## Bun (tooling rules)
 

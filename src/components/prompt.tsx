@@ -1,5 +1,7 @@
 import { Box, Text, useApp, useInput } from "ink"
 import { useState } from "react"
+import { matchCommands } from "../commands"
+import { CommandSuggestions } from "./command-suggestions"
 
 function renderLineWithCursor(line: string, cursorCol: number) {
   if (cursorCol < 0) {
@@ -28,6 +30,24 @@ export function Prompt({ onSubmit }: { onSubmit: (text: string) => void }) {
   const [row, setRow] = useState(0)
   const [col, setCol] = useState(0)
   const [armed, setArmed] = useState(false)
+  const [selectedSuggestion, setSelectedSuggestion] = useState(0)
+
+  const currentLine = lines[0] ?? ""
+  const showSuggestions = lines.length === 1 && row === 0 && currentLine.startsWith("/")
+  const matches = showSuggestions ? matchCommands(currentLine) : []
+  const clampedSelected = matches.length > 0 ? Math.min(selectedSuggestion, matches.length - 1) : 0
+
+  const completeSuggestion = () => {
+    const sel = matches[clampedSelected]
+    if (!sel) {
+      return
+    }
+    const completed = `/${sel.name}`
+    setLines([completed])
+    setRow(0)
+    setCol(completed.length)
+    setSelectedSuggestion(0)
+  }
 
   const reset = () => {
     setLines([""])
@@ -164,16 +184,40 @@ export function Prompt({ onSubmit }: { onSubmit: (text: string) => void }) {
       return
     }
 
-    // Enter: submit; Shift+Enter: newline
+    // Enter: submit (auto-completing if suggestions are visible); Shift+Enter: newline
     if (key.return) {
       if (key.shift) {
         insertNewline()
       } else {
-        const text = lines.join("\n")
+        const sel = matches.length > 0 ? matches[clampedSelected] : undefined
+        const text = sel ? `/${sel.name}` : lines.join("\n")
         reset()
+        setSelectedSuggestion(0)
         onSubmit(text)
       }
       return
+    }
+
+    // Tab: complete suggestion if visible, else insert two spaces
+    if (key.tab) {
+      if (matches.length > 0) {
+        completeSuggestion()
+      } else {
+        insertText("  ")
+      }
+      return
+    }
+
+    // Up/Down navigate the suggestion list when visible
+    if (matches.length > 0) {
+      if (key.upArrow) {
+        setSelectedSuggestion(Math.max(0, clampedSelected - 1))
+        return
+      }
+      if (key.downArrow) {
+        setSelectedSuggestion(Math.min(matches.length - 1, clampedSelected + 1))
+        return
+      }
     }
 
     if (key.backspace) {
@@ -196,6 +240,11 @@ export function Prompt({ onSubmit }: { onSubmit: (text: string) => void }) {
     }
     if (key.rightArrow) {
       const cur = lines[row] ?? ""
+      // Right at end of buffer with suggestions visible: complete the selection.
+      if (matches.length > 0 && col === cur.length && row === lines.length - 1) {
+        completeSuggestion()
+        return
+      }
       if (col < cur.length) {
         setCol((c) => c + 1)
       } else if (row < lines.length - 1) {
@@ -236,6 +285,7 @@ export function Prompt({ onSubmit }: { onSubmit: (text: string) => void }) {
           ))}
         </Box>
       </Box>
+      {showSuggestions && <CommandSuggestions matches={matches} selectedIndex={clampedSelected} />}
       {armed && <Text dimColor>(Press Ctrl+C again to exit, or any other key to cancel)</Text>}
     </Box>
   )
