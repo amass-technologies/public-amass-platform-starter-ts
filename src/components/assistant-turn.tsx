@@ -65,6 +65,18 @@ function Inline({ tokens }: { tokens: Tokens.Generic[] }) {
   )
 }
 
+function plainWidth(tokens: Tokens.Generic[]): number {
+  let w = 0
+  for (const t of tokens) {
+    if (t.tokens?.length) {
+      w += plainWidth(t.tokens)
+    } else if (typeof t.text === "string") {
+      w += t.text.length
+    }
+  }
+  return w
+}
+
 function Blocks({ tokens }: { tokens: Tokens.Generic[] }) {
   return (
     <Box flexDirection="column">
@@ -121,6 +133,45 @@ function Blocks({ tokens }: { tokens: Tokens.Generic[] }) {
                 <Text color="gray">{(tok as Tokens.Code).text}</Text>
               </Box>
             )
+          case "table": {
+            const table = tok as Tokens.Table
+            const colWidths = table.header.map((headerCell, c) => {
+              let w = plainWidth(headerCell.tokens ?? [])
+              for (const row of table.rows) {
+                w = Math.max(w, plainWidth(row[c]?.tokens ?? []))
+              }
+              return w
+            })
+            const justify = (a: Tokens.TableCell["align"]) =>
+              a === "right" ? "flex-end" : a === "center" ? "center" : "flex-start"
+            const renderCells = (cells: Tokens.TableCell[], header: boolean) =>
+              cells.flatMap((cell, c) => [
+                c > 0 ? (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: column order is stable within a row
+                  <Text key={`s${c}`} dimColor>
+                    {" │ "}
+                  </Text>
+                ) : null,
+                // biome-ignore lint/suspicious/noArrayIndexKey: column order is stable within a row
+                <Box key={`c${c}`} width={colWidths[c]} justifyContent={justify(cell.align)}>
+                  <Text bold={header}>
+                    <Inline tokens={cell.tokens ?? []} />
+                  </Text>
+                </Box>,
+              ])
+            const sep = colWidths.map((w, c) => (c > 0 ? "─┼─" : "") + "─".repeat(w)).join("")
+            return (
+              // biome-ignore lint/suspicious/noArrayIndexKey: token order is stable for a given source
+              <Box key={i} flexDirection="column">
+                <Box>{renderCells(table.header, true)}</Box>
+                <Text dimColor>{sep}</Text>
+                {table.rows.map((row, r) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: row order is stable for a given source
+                  <Box key={r}>{renderCells(row, false)}</Box>
+                ))}
+              </Box>
+            )
+          }
           case "hr":
             return (
               // biome-ignore lint/suspicious/noArrayIndexKey: token order is stable for a given source
