@@ -1,5 +1,7 @@
 # Amass Platform Starter (TypeScript)
 
+<img width="826" height="439" alt="CleanShot 2026-05-07 at 17 04 15" src="https://github.com/user-attachments/assets/54a2271b-e936-4f92-9654-1699885e98e9" />
+
 Join the [Amass Developer Community on Discord](https://discord.com/invite/sEGaBHMhWa).
 
 A small REPL-based research-assistant CLI built on the [Vercel AI SDK](https://sdk.vercel.ai) and the [Amass platform](https://platform.amass.tech). It streams a model turn, surfaces tool calls and results inline, supports multi-line input with paste handling, slash commands with autocomplete, and sub-agent delegation.
