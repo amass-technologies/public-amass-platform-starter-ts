@@ -1,5 +1,7 @@
 # Amass Platform Starter (TypeScript)
 
+Join the [Amass Developer Community on Discord](https://discord.com/invite/sEGaBHMhWa).
+
 A small REPL-based research-assistant CLI built on the [Vercel AI SDK](https://sdk.vercel.ai) and the [Amass platform](https://platform.amass.tech). It streams a model turn, surfaces tool calls and results inline, supports multi-line input with paste handling, slash commands with autocomplete, and sub-agent delegation.
 
 Out of the box it ships as a biomedical research assistant — BiomedCore (PubMed) and TrialCore (ClinicalTrials.gov) `search` / `lookup` / `get` tools are wired up. It's intentionally minimal: a starter, not a framework. Fork it, change the system prompt and tools, ship a different agent.
