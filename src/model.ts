@@ -1,3 +1,4 @@
+import { bedrock } from "@ai-sdk/amazon-bedrock"
 import { anthropic } from "@ai-sdk/anthropic"
 import { google } from "@ai-sdk/google"
 import { openai } from "@ai-sdk/openai"
@@ -39,7 +40,12 @@ export function getModel(spec: string): LanguageModel {
       })
       return litellm(modelId)
     }
+    case "bedrock":
+      if (!env.AWS_BEARER_TOKEN_BEDROCK || !env.AWS_REGION) {
+        throw new Error("AWS_BEARER_TOKEN_BEDROCK and AWS_REGION must be set")
+      }
+      return bedrock(modelId)
     default:
-      throw new Error(`Unknown provider "${provider}". Known: anthropic, openai, google, litellm.`)
+      throw new Error(`Unknown provider "${provider}". Known: anthropic, openai, google, litellm, bedrock.`)
   }
 }

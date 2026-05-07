@@ -13,6 +13,8 @@ const environment = new Environment(
     GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
     LITELLM_BASE_URL: z.string().url().optional(),
     LITELLM_API_KEY: z.string().optional(),
+    AWS_BEARER_TOKEN_BEDROCK: z.string().optional(),
+    AWS_REGION: z.string().optional(),
   }),
 )
 
