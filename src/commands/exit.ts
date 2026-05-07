@@ -5,5 +5,6 @@ export const exitCommand: Command = {
   description: "Quit the REPL",
   handler: (ctx) => {
     ctx.exit()
+    return { kind: "done" }
   },
 }

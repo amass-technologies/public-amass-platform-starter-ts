@@ -33,33 +33,10 @@ export function App({ model }: { model: LanguageModel }) {
 
   const { tools, toolFormatters } = useMemo(() => buildTools(model), [model])
 
-  const handleSubmit = async (input: string) => {
-    const trimmed = input.trim()
-    if (trimmed === "") {
-      return
-    }
-
-    if (trimmed.startsWith("/")) {
-      const handled = await runCommand(trimmed, {
-        exit,
-        clearHistory: () => {
-          // Clear visible area + scrollback, move cursor home, then re-print intro
-          process.stdout.write("\x1b[2J\x1b[3J\x1b[H")
-          printIntro()
-          setCompleted([])
-          messagesRef.current = []
-        },
-      })
-      if (handled) {
-        return
-      }
-      setCompleted((c) => [...c, { type: "error", message: `Unknown command: ${trimmed}` }])
-      return
-    }
-
-    const userMsg: ModelMessage = { role: "user", content: input }
+  const submitTurn = async (displayText: string, modelText: string) => {
+    const userMsg: ModelMessage = { role: "user", content: modelText }
     messagesRef.current = [...messagesRef.current, userMsg]
-    setCompleted((c) => [...c, { type: "user", text: input }])
+    setCompleted((c) => [...c, { type: "user", text: displayText }])
     setActiveTurn([])
     setBusy(true)
 
@@ -103,6 +80,45 @@ export function App({ model }: { model: LanguageModel }) {
     } finally {
       setBusy(false)
     }
+  }
+
+  const handleSubmit = async (display: string, modelText: string) => {
+    // `display` is what the user sees in the transcript (may contain paste placeholders)
+    // `modelText` is what the model receives (placeholders expanded with the actual content)
+    const modelTrimmed = modelText.trim()
+    if (modelTrimmed === "") {
+      return
+    }
+
+    if (modelTrimmed.startsWith("/")) {
+      const outcome = await runCommand(modelTrimmed, {
+        exit,
+        clearHistory: () => {
+          // Clear visible area + scrollback, move cursor home, then re-print intro
+          process.stdout.write("\x1b[2J\x1b[3J\x1b[H")
+          printIntro()
+          setCompleted([])
+          messagesRef.current = []
+        },
+      })
+      if (outcome.kind === "done") {
+        return
+      }
+      if (outcome.kind === "unknown") {
+        // Show the visible (display) form in the error so paste placeholders aren't expanded into terminal noise
+        setCompleted((c) => [...c, { type: "error", message: `Unknown command: ${display.trim()}` }])
+        return
+      }
+      if (outcome.kind === "error") {
+        setCompleted((c) => [...c, { type: "error", message: outcome.message }])
+        return
+      }
+      // outcome.kind === "submit"
+      await submitTurn(display, outcome.modelMessage)
+      return
+    }
+
+    await submitTurn(display, modelText)
   }
 
   return (

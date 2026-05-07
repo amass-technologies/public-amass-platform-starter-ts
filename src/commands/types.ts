@@ -3,8 +3,13 @@ export type CommandContext = {
   clearHistory: () => void
 }
 
+export type CommandResult =
+  | { kind: "done" }
+  | { kind: "submit"; modelMessage: string }
+  | { kind: "error"; message: string }
+
 export type Command = {
   name: string
   description: string
-  handler: (ctx: CommandContext, args: string[]) => void | Promise<void>
+  handler: (ctx: CommandContext, args: string) => CommandResult | Promise<CommandResult>
 }

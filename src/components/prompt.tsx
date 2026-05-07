@@ -1,5 +1,5 @@
 import { Box, Text, useApp, useInput } from "ink"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { matchCommands } from "../commands"
 import { CommandSuggestions } from "./command-suggestions"
 
@@ -24,13 +24,35 @@ function renderLineWithCursor(line: string, cursorCol: number) {
   )
 }
 
-export function Prompt({ onSubmit }: { onSubmit: (text: string) => void }) {
+const LARGE_PASTE_THRESHOLD = 500
+
+type Paste = { id: number; placeholder: string; text: string }
+
+export function Prompt({ onSubmit }: { onSubmit: (display: string, model: string) => void }) {
   const { exit } = useApp()
   const [lines, setLines] = useState<string[]>([""])
   const [row, setRow] = useState(0)
   const [col, setCol] = useState(0)
   const [armed, setArmed] = useState(false)
   const [selectedSuggestion, setSelectedSuggestion] = useState(0)
+  const [pastes, setPastes] = useState<Paste[]>([])
+
+  // Coalesce paste chunks. Stdin delivers a large paste as multiple ~1KB chunks
+  // spread across separate event-loop iterations (often a few ms apart). We
+  // accumulate them in a buffer and flush once 100ms have passed without any new
+  // chunk arriving. Single keystrokes bypass the buffer entirely (immediate
+  // processing) so typing has no perceptible latency.
+  const PASTE_FLUSH_MS = 100
+  const pasteBufferRef = useRef<string>("")
+  const flushHandleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (flushHandleRef.current) {
+        clearTimeout(flushHandleRef.current)
+      }
+    }
+  }, [])
 
   const currentLine = lines[0] ?? ""
   const showSuggestions = lines.length === 1 && row === 0 && currentLine.startsWith("/")
@@ -53,6 +75,14 @@ export function Prompt({ onSubmit }: { onSubmit: (text: string) => void }) {
     setLines([""])
     setRow(0)
     setCol(0)
+    setPastes([])
+  }
+
+  const expandPastes = (text: string): string => {
+    if (pastes.length === 0) {
+      return text
+    }
+    return pastes.reduce((s, p) => s.replaceAll(p.placeholder, p.text), text)
   }
 
   const insertNewline = () => {
@@ -67,8 +97,22 @@ export function Prompt({ onSubmit }: { onSubmit: (text: string) => void }) {
     setCol(0)
   }
 
-  const insertText = (text: string) => {
+  const insertTextRaw = (text: string) => {
     if (!text) {
+      return
+    }
+    // Large paste → store as attachment, insert a short placeholder in the buffer.
+    if (text.length >= LARGE_PASTE_THRESHOLD) {
+      const id = pastes.reduce((max, p) => Math.max(max, p.id), 0) + 1
+      const placeholder = `[Pasted #${id}: ${text.length} bytes]`
+      setPastes((ps) => [...ps, { id, placeholder, text }])
+      setLines((ls) => {
+        const cur = ls[row] ?? ""
+        const next = [...ls]
+        next[row] = cur.slice(0, col) + placeholder + cur.slice(col)
+        return next
+      })
+      setCol((c) => c + placeholder.length)
       return
     }
     if (text.includes("\n") || text.includes("\r")) {
@@ -110,6 +154,35 @@ export function Prompt({ onSubmit }: { onSubmit: (text: string) => void }) {
       return next
     })
     setCol((c) => c + safe.length)
+  }
+
+  const flushPasteBuffer = () => {
+    const text = pasteBufferRef.current
+    pasteBufferRef.current = ""
+    flushHandleRef.current = null
+    if (text) {
+      insertTextRaw(text)
+    }
+  }
+
+  const insertText = (text: string) => {
+    if (!text) {
+      return
+    }
+    const inBuffer = pasteBufferRef.current.length > 0
+    const isLargeChunk = text.length >= LARGE_PASTE_THRESHOLD
+    // Buffer if a paste is already accumulating, OR this chunk is large enough
+    // that it's likely the start of a paste. Small standalone inputs (typing)
+    // bypass the buffer.
+    if (inBuffer || isLargeChunk) {
+      pasteBufferRef.current += text
+      if (flushHandleRef.current) {
+        clearTimeout(flushHandleRef.current)
+      }
+      flushHandleRef.current = setTimeout(flushPasteBuffer, PASTE_FLUSH_MS)
+      return
+    }
+    insertTextRaw(text)
   }
 
   const backspace = () => {
@@ -189,11 +262,34 @@ export function Prompt({ onSubmit }: { onSubmit: (text: string) => void }) {
       if (key.shift) {
         insertNewline()
       } else {
+        // Drain any pending paste buffer that hasn't flushed yet.
+        // Append it directly to display/model since state hasn't been updated.
+        const pendingText = pasteBufferRef.current
+        pasteBufferRef.current = ""
+        if (flushHandleRef.current) {
+          clearTimeout(flushHandleRef.current)
+          flushHandleRef.current = null
+        }
+
         const sel = matches.length > 0 ? matches[clampedSelected] : undefined
-        const text = sel ? `/${sel.name}` : lines.join("\n")
+        let display = sel ? `/${sel.name}` : lines.join("\n")
+        let model = expandPastes(display)
+
+        if (pendingText) {
+          if (pendingText.length >= LARGE_PASTE_THRESHOLD) {
+            const id = pastes.reduce((max, p) => Math.max(max, p.id), 0) + 1
+            const placeholder = `[Pasted #${id}: ${pendingText.length} bytes]`
+            display += placeholder
+            model += pendingText
+          } else {
+            display += pendingText
+            model += pendingText
+          }
+        }
+
         reset()
         setSelectedSuggestion(0)
-        onSubmit(text)
+        onSubmit(display, model)
       }
       return
     }

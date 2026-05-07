@@ -1,10 +1,13 @@
 import { clearCommand } from "./clear"
 import { exitCommand } from "./exit"
-import type { Command, CommandContext } from "./types"
+import { factCheckCommand } from "./fact-check"
+import type { Command, CommandContext, CommandResult } from "./types"
 
-export type { Command, CommandContext } from "./types"
+export type { Command, CommandContext, CommandResult } from "./types"
 
-export const commands: Command[] = [exitCommand, clearCommand]
+export const commands: Command[] = [exitCommand, clearCommand, factCheckCommand]
+
+export type CommandOutcome = { kind: "unknown" } | CommandResult
 
 export function matchCommands(input: string): Command[] {
   if (!input.startsWith("/")) {
@@ -18,19 +21,25 @@ export function matchCommands(input: string): Command[] {
   return commands.filter((c) => c.name.toLowerCase().startsWith(lower))
 }
 
-export async function runCommand(input: string, ctx: CommandContext): Promise<boolean> {
+export async function runCommand(input: string, ctx: CommandContext): Promise<CommandOutcome> {
   if (!input.startsWith("/")) {
-    return false
+    return { kind: "unknown" }
   }
-  const trimmed = input.slice(1).trim()
-  if (!trimmed) {
-    return false
+  const stripped = input.slice(1)
+  if (!stripped.trim()) {
+    return { kind: "unknown" }
   }
-  const [name, ...args] = trimmed.split(/\s+/)
+  // First whitespace separates the command name from the rest of the line.
+  // Args preserve interior whitespace and newlines verbatim.
+  const match = stripped.match(/^(\S+)(?:\s+([\s\S]*))?$/)
+  if (!match) {
+    return { kind: "unknown" }
+  }
+  const name = match[1] ?? ""
+  const args = match[2] ?? ""
   const cmd = commands.find((c) => c.name === name)
   if (!cmd) {
-    return false
+    return { kind: "unknown" }
   }
-  await cmd.handler(ctx, args)
-  return true
+  return cmd.handler(ctx, args)
 }
