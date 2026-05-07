@@ -1,5 +1,6 @@
 import { tool } from "ai"
 import { z } from "zod"
+import env from "../../env"
 import { SearchTrialcoreRecordsInputSchema, type TrialcoreRecord, TrialcoreRecordSchema } from "./types"
 
 export const searchTrialcoreRecords = tool({
@@ -8,11 +9,6 @@ export const searchTrialcoreRecords = tool({
   inputSchema: SearchTrialcoreRecordsInputSchema,
   outputSchema: z.array(TrialcoreRecordSchema),
   execute: async (input) => {
-    const apiKey = process.env.AMASS_API_KEY
-    if (!apiKey) {
-      throw new Error("AMASS_API_KEY must be set to call the Amass API.")
-    }
-
     const params = new URLSearchParams()
     params.set("query", input.query)
     params.set("limit", "10")
@@ -53,9 +49,9 @@ export const searchTrialcoreRecords = tool({
       params.set("minEnrollment", String(input.minEnrollment))
     }
 
-    const url = `https://api.amass.tech/api/v1/cores/trialcore/records?${params.toString()}`
+    const url = `${env.AMASS_API_BASE_URL}/api/v1/cores/trialcore/records?${params.toString()}`
     const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: { Authorization: `Bearer ${env.AMASS_API_KEY}` },
     })
     if (!response.ok) {
       const body = await response.text()

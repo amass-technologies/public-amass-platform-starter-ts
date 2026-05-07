@@ -1,4 +1,5 @@
 import { tool } from "ai"
+import env from "../../env"
 import { type BiomedcoreRecord, BiomedcoreRecordSchema, GetBiomedcoreRecordByIdInputSchema } from "./types"
 
 export const getBiomedcoreRecordById = tool({
@@ -7,14 +8,9 @@ export const getBiomedcoreRecordById = tool({
   inputSchema: GetBiomedcoreRecordByIdInputSchema,
   outputSchema: BiomedcoreRecordSchema,
   execute: async (input) => {
-    const apiKey = process.env.AMASS_API_KEY
-    if (!apiKey) {
-      throw new Error("AMASS_API_KEY must be set to call the Amass API.")
-    }
-
-    const url = `https://api.amass.tech/api/v1/cores/biomedcore/records/${encodeURIComponent(input.amassId)}`
+    const url = `${env.AMASS_API_BASE_URL}/api/v1/cores/biomedcore/records/${encodeURIComponent(input.amassId)}`
     const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: { Authorization: `Bearer ${env.AMASS_API_KEY}` },
     })
     if (!response.ok) {
       const body = await response.text()

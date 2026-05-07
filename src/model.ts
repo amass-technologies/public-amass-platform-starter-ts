@@ -3,6 +3,7 @@ import { google } from "@ai-sdk/google"
 import { openai } from "@ai-sdk/openai"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import type { LanguageModel } from "ai"
+import env from "./env"
 
 export function getModel(spec: string): LanguageModel {
   const sep = spec.indexOf(":")
@@ -13,28 +14,28 @@ export function getModel(spec: string): LanguageModel {
   const modelId = spec.slice(sep + 1)
   switch (provider) {
     case "anthropic":
-      if (!process.env.ANTHROPIC_API_KEY) {
+      if (!env.ANTHROPIC_API_KEY) {
         throw new Error("ANTHROPIC_API_KEY must be set")
       }
       return anthropic(modelId)
     case "openai":
-      if (!process.env.OPENAI_API_KEY) {
+      if (!env.OPENAI_API_KEY) {
         throw new Error("OPENAI_API_KEY must be set")
       }
       return openai(modelId)
     case "google":
-      if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
         throw new Error("GOOGLE_GENERATIVE_AI_API_KEY must be set")
       }
       return google(modelId)
     case "litellm": {
-      if (!process.env.LITELLM_BASE_URL || !process.env.LITELLM_API_KEY) {
+      if (!env.LITELLM_BASE_URL || !env.LITELLM_API_KEY) {
         throw new Error("LITELLM_BASE_URL and LITELLM_API_KEY must be set")
       }
       const litellm = createOpenAICompatible({
         name: "litellm",
-        baseURL: process.env.LITELLM_BASE_URL ?? "http://localhost:4000/v1",
-        apiKey: process.env.LITELLM_API_KEY ?? "dummy",
+        baseURL: env.LITELLM_BASE_URL ?? "http://localhost:4000/v1",
+        apiKey: env.LITELLM_API_KEY ?? "dummy",
       })
       return litellm(modelId)
     }
