@@ -1,5 +1,6 @@
 import { tool } from "ai"
 import { z } from "zod"
+import env from "../../env"
 import { type BiomedcoreRecord, BiomedcoreRecordSchema, SearchBiomedcoreRecordsInputSchema } from "./types"
 
 export const searchBiomedcoreRecords = tool({
@@ -8,11 +9,6 @@ export const searchBiomedcoreRecords = tool({
   inputSchema: SearchBiomedcoreRecordsInputSchema,
   outputSchema: z.array(BiomedcoreRecordSchema),
   execute: async (input) => {
-    const apiKey = process.env.AMASS_API_KEY
-    if (!apiKey) {
-      throw new Error("AMASS_API_KEY must be set to call the Amass API.")
-    }
-
     const params = new URLSearchParams()
     params.set("query", input.query)
     params.set("limit", "10")
@@ -32,9 +28,9 @@ export const searchBiomedcoreRecords = tool({
       params.set("isRetracted", String(input.isRetracted))
     }
 
-    const url = `https://api.amass.tech/api/v1/cores/biomedcore/records?${params.toString()}`
+    const url = `${env.AMASS_API_BASE_URL}/api/v1/cores/biomedcore/records?${params.toString()}`
     const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: { Authorization: `Bearer ${env.AMASS_API_KEY}` },
     })
     if (!response.ok) {
       const body = await response.text()

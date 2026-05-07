@@ -1,5 +1,6 @@
 import { tool } from "ai"
 import { z } from "zod"
+import env from "../../env"
 import {
   LookupBiomedcoreAmassIdInputSchema,
   type LookupBiomedcoreAmassIdResult,
@@ -12,17 +13,12 @@ export const lookupBiomedcoreAmassId = tool({
   inputSchema: LookupBiomedcoreAmassIdInputSchema,
   outputSchema: z.array(LookupBiomedcoreAmassIdResultSchema),
   execute: async (input) => {
-    const apiKey = process.env.AMASS_API_KEY
-    if (!apiKey) {
-      throw new Error("AMASS_API_KEY must be set to call the Amass API.")
-    }
-
-    const url = "https://api.amass.tech/api/v1/cores/biomedcore/records/lookup"
+    const url = `${env.AMASS_API_BASE_URL}/api/v1/cores/biomedcore/records/lookup`
     const response = await fetch(url, {
       method: "POST",
       body: JSON.stringify(input),
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${env.AMASS_API_KEY}`,
         "Content-Type": "application/json",
       },
     })
