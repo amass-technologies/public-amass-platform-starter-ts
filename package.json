@@ -1,8 +1,18 @@
 {
   "name": "@amass/public-amass-platform-starter-ts",
+  "description": "A Bun + TypeScript starter for building CLI agents on the Amass platform.",
+  "private": true,
   "module": "src/index.tsx",
   "type": "module",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amass-technologies/public-amass-platform-starter-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/amass-technologies/public-amass-platform-starter-ts/issues"
+  },
+  "homepage": "https://github.com/amass-technologies/public-amass-platform-starter-ts#readme",
   "scripts": {
     "start": "bun run src/index.tsx",
     "lint": "biome check .",
