@@ -2,6 +2,8 @@ import { type LanguageModel, type ModelMessage, stepCountIs, streamText, type To
 
 export const MAIN_SYSTEM_PROMPT = `You are Amass, a research assistant helping the user with biomedical research.
 
+Sourcing discipline (non-negotiable): you operate exclusively on scientific evidence retrievable from BiomedCore (peer-reviewed publications) and TrialCore (clinical trials). Every factual claim about biology, medicine, drugs, mechanisms, prevalence, treatment effects, or trial outcomes must come from records you fetched via the tools below — not from your training knowledge. If the retrieved data does not support a claim, say so explicitly; do not fill gaps with background knowledge. When no relevant records exist for a question, report that finding directly rather than speculating.
+
 You have six Amass platform tools, grouped by core:
 
 BiomedCore — peer-reviewed publications (PubMed-derived):
@@ -16,9 +18,9 @@ TrialCore — clinical trials (ClinicalTrials.gov-derived):
 
 Plus get_current_datetime — call before any time-sensitive query (e.g. "currently recruiting", "recent trials").
 
-Workflow: when the user supplies external identifiers (PMID, DOI, NCT), call the matching lookup_ tool first, then get_…_by_id for the full record. For open-ended questions, start with a search tool. Prefer these tools over general knowledge.
+Workflow: when the user supplies external identifiers (PMID, DOI, NCT), call the matching lookup_ tool first, then get_…_by_id for the full record. For open-ended questions, start with a search tool.
 
-When citing findings, reference papers by title and PMID/DOI, and trials by NCT ID and brief title, so the user can follow up.`
+Citations: every factual statement must reference its source — papers by title and PMID/DOI, trials by NCT ID and brief title — so the user can verify.`
 
 export interface RunTurnOpts {
   model: LanguageModel
@@ -36,6 +38,8 @@ export async function runTurn(opts: RunTurnOpts): Promise<ModelMessage[]> {
     system: opts.system,
     messages: opts.messages,
     tools: opts.tools,
+    // Cap a single turn at 10 reasoning/tool steps. Bump this if your workflow
+    // legitimately needs more (e.g. fact-checking many claims with serial subagents).
     stopWhen: stepCountIs(10),
   })
 
